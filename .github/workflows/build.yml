@@ -1,0 +1,81 @@
+name: ALCDSPPlugin CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build DSP (${{ matrix.configuration }})
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select project directory
+        id: project
+        shell: bash
+        run: |
+          if [[ -f "ALCDSPPlugin/CMakeLists.txt" ]]; then
+            echo "dir=ALCDSPPlugin" >> "$GITHUB_OUTPUT"
+          elif [[ -f "CMakeLists.txt" ]]; then
+            echo "dir=." >> "$GITHUB_OUTPUT"
+          else
+            echo "Could not find ALCDSPPlugin/CMakeLists.txt or CMakeLists.txt"
+            exit 1
+          fi
+
+      - name: Configure CMake
+        run: |
+          cmake -S "${{ steps.project.outputs.dir }}" \\
+            -B "build/${{ matrix.configuration }}" \\
+            -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
+
+      - name: Build DSP core and tools
+        run: |
+          cmake --build "build/${{ matrix.configuration }}" \\
+            --config "${{ matrix.configuration }}" \\
+            --parallel
+
+      - name: Run DSP tests
+        run: |
+          ctest --test-dir "build/${{ matrix.configuration }}" \\
+            --build-config "${{ matrix.configuration }}" \\
+            --output-on-failure
+
+      - name: Package build outputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUILD_DIR="build/${{ matrix.configuration }}"
+          PACKAGE_DIR="artifacts/ALCDSPPlugin-${{ matrix.configuration }}"
+          mkdir -p "$PACKAGE_DIR"
+
+          for file in libALCDSPCore.a ALCDSPTests dsp_process; do
+            if [[ ! -f "$BUILD_DIR/$file" ]]; then
+              echo "Expected build output missing: $BUILD_DIR/$file"
+              echo "Contents of build directory:"
+              find "$BUILD_DIR" -maxdepth 3 -type f -print
+              exit 1
+            fi
+            cp "$BUILD_DIR/$file" "$PACKAGE_DIR/"
+          done
+
+          cp "${{ steps.project.outputs.dir }}/README.md" "$PACKAGE_DIR/" 2>/dev/null || true
+          cp "${{ steps.project.outputs.dir }}/LICENSE" "$PACKAGE_DIR/" 2>/dev/null || true
+          ditto -c -k --sequesterRsrc --keepParent "$PACKAGE_DIR" \\
+            "artifacts/ALCDSPPlugin-${{ matrix.configuration }}.zip"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ALCDSPPlugin-${{ matrix.configuration }}-macOS
+          path: artifacts/ALCDSPPlugin-${{ matrix.configuration }}.zip
+          if-no-files-found: error
+          retention-days: 14
