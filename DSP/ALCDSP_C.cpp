@@ -1,10 +1,13 @@
 #include "ALCDSP.hpp"
 #include "ALCDSP_C.h"
 
-struct ALCDSPContext { alcdsp::Engine engine; };
+struct ALCDSPContext {
+    ALCDSPContext() : engine() {}
+    alcdsp::Engine engine;
+};
 
 extern "C" ALCDSPContext* alcdsp_create(void) {
-    return new ALCDSPContext{};
+    return new ALCDSPContext();
 }
 extern "C" void alcdsp_destroy(ALCDSPContext* context) { delete context; }
 extern "C" int alcdsp_prepare(ALCDSPContext* context, double sample_rate) {
