@@ -33,20 +33,20 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -S "${{ steps.project.outputs.dir }}" \\
-            -B "build/${{ matrix.configuration }}" \\
+          cmake -S "${{ steps.project.outputs.dir }}" \
+            -B "build/${{ matrix.configuration }}" \
             -DCMAKE_BUILD_TYPE=${{ matrix.configuration }}
 
       - name: Build DSP core and tools
         run: |
-          cmake --build "build/${{ matrix.configuration }}" \\
-            --config "${{ matrix.configuration }}" \\
+          cmake --build "build/${{ matrix.configuration }}" \
+            --config "${{ matrix.configuration }}" \
             --parallel
 
       - name: Run DSP tests
         run: |
-          ctest --test-dir "build/${{ matrix.configuration }}" \\
-            --build-config "${{ matrix.configuration }}" \\
+          ctest --test-dir "build/${{ matrix.configuration }}" \
+            --build-config "${{ matrix.configuration }}" \
             --output-on-failure
 
       - name: Package build outputs
@@ -69,7 +69,7 @@ jobs:
 
           cp "${{ steps.project.outputs.dir }}/README.md" "$PACKAGE_DIR/" 2>/dev/null || true
           cp "${{ steps.project.outputs.dir }}/LICENSE" "$PACKAGE_DIR/" 2>/dev/null || true
-          ditto -c -k --sequesterRsrc --keepParent "$PACKAGE_DIR" \\
+          ditto -c -k --sequesterRsrc --keepParent "$PACKAGE_DIR" \
             "artifacts/ALCDSPPlugin-${{ matrix.configuration }}.zip"
 
       - name: Upload build artifact
